@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회원 가입</title>
+    <style>
+        /* 기본 스타일 */
+        body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; }
+        input { display: block; width: 100%; margin-bottom: 12px; padding: 10px; font-size: 16px; }
+        button { padding: 10px; width: 100%; border: none; cursor: pointer; font-size: 16px; margin-top: 8px; }
+        #signup-btn { background-color: #01a74c; color: white; }
+        #back-login-btn { background-color: #888; color: white; }
+        .message { margin-top: 12px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h2>회원 가입</h2>
+
+    <!-- 회원가입 폼 -->
+    <form id="signup-form">
+        <input type="text" id="id-input" placeholder="아이디 입력" required>
+        <input type="password" id="pw-input" placeholder="비밀번호 입력" required>
+        <button id="signup-btn" type="submit">회원가입</button>
+    </form>
+
+    <!-- 로그인 페이지로 돌아가기 버튼 -->
+    <button id="back-login-btn" type="button">로그인 페이지로 돌아가기</button>
+
+    <!-- 메시지 표시 영역 -->
+    <div class="message" id="message"></div>
+
+    <script>
+        // DOM 요소 가져오기
+        const form = document.getElementById('signup-form');
+        const messageDiv = document.getElementById('message');
+        const backBtn = document.getElementById('back-login-btn');
+
+        // 회원가입 처리
+        form.addEventListener('submit', function(e) {
+            e.preventDefault(); // 폼 제출 시 페이지 새로고침 방지
+
+            const id = document.getElementById('id-input').value;
+            const pw = document.getElementById('pw-input').value;
+
+            // 서버에 POST 요청
+            fetch('/register', {  // 상대 경로로 Flask 서버 호출
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, pw }) // 입력 데이터 전송
+            })
+            .then(res => res.json().then(data => ({status: res.status, body: data})))
+            .then(obj => {
+                // 결과 메시지 표시
+                messageDiv.textContent = obj.body.message;
+                messageDiv.style.color = obj.status === 200 ? 'green' : 'red';
+                if(obj.status === 200) form.reset(); // 성공 시 입력 초기화
+            })
+            .catch(err => {
+                // 서버 연결 실패 시
+                messageDiv.textContent = '서버 연결 오류';
+                messageDiv.style.color = 'red';
+            });
+        });
+
+        // 로그인 페이지로 돌아가기
+        backBtn.addEventListener('click', () => {
+            window.location.href = '/'; // index.html로 이동
+        });
+    </script>
+</body>
+</html>
