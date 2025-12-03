@@ -1,0 +1,5 @@
+[2025-12-04 02:02:05] LOGIN SUCCESS: username=user1
+[2025-12-04 02:02:05] LOGIN SUCCESS: username=user1
+[2025-12-04 02:02:15] LOGIN FAIL: username=user1, reason=decrypt_fail
+[2025-12-04 02:02:35] LOGIN FAIL: username=ㅑㅓㅣㅘㅣㅚ, reason=user_not_found
+[2025-12-04 02:02:35] LOGIN FAIL: username=ㅑㅓㅣㅘㅣㅚ, reason=user_not_found

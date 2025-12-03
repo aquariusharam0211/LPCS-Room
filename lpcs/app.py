@@ -7,11 +7,22 @@ import threading
 import os
 import hashlib
 import bcrypt
+import datetime
 
 from security import load_or_create_keys, decrypt_password_base64, log_login_attempt
 
 app = Flask(__name__)
 CORS(app)
+
+# ============================
+#        로그 저장 함수
+# ============================
+def log_event(message):
+    """log.txt 파일에 로그 저장"""
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{timestamp}] {message}\n"
+    with open("log.txt", "a", encoding="utf-8") as f:
+        f.write(line)
 
 # ============================
 #       DB 연결
@@ -29,6 +40,14 @@ cursor = db.cursor()
 #       RSA 키 준비
 # ============================
 public_key, private_key = load_or_create_keys(bit_length=1024)
+
+@app.route('/public-key', methods=['GET'])
+def get_public_key():
+    n, e = public_key
+    return jsonify({
+        "n": str(n),  # modulus
+        "e": str(e)   # 공개 지수
+    })
 
 # ============================
 #       HTML 페이지
@@ -62,10 +81,11 @@ def register():
         plain_pw = decrypt_password_base64(cipher_b64, private_key)
     except ValueError as e:
         log_login_attempt(username, False, str(e))
+        log_event(f"REGISTER FAIL: username={username}, reason=decrypt_fail")
         return jsonify({'message': '비밀번호 복호화 실패', 'error': str(e)}), 400
 
-    # SHA256 → bcrypt 적용
-    sha_pw = hashlib.sha256(plain_pw.encode()).digest()  # 32바이트
+    # SHA256 → bcrypt
+    sha_pw = hashlib.sha256(plain_pw.encode()).digest()
     hashed_pw = bcrypt.hashpw(sha_pw, bcrypt.gensalt()).decode()
 
     cursor.execute(
@@ -75,6 +95,8 @@ def register():
     db.commit()
 
     log_login_attempt(username, True, "REGISTER_SUCCESS")
+    log_event(f"REGISTER SUCCESS: username={username}")
+
     return jsonify({'message': '회원가입 완료!'}), 200
 
 # ============================
@@ -93,23 +115,28 @@ def login():
     result = cursor.fetchone()
     if not result:
         log_login_attempt(username, False, "USER_NOT_FOUND")
+        log_event(f"LOGIN FAIL: username={username}, reason=user_not_found")
         return jsonify({'message': '아이디 또는 비밀번호가 틀렸습니다'}), 400
 
     stored_hash = result[0]
 
+    # RSA 복호화
     try:
         plain_pw = decrypt_password_base64(cipher_b64, private_key)
     except ValueError as e:
         log_login_attempt(username, False, str(e))
+        log_event(f"LOGIN FAIL: username={username}, reason=decrypt_fail")
         return jsonify({'message': '비밀번호 복호화 실패', 'error': str(e)}), 400
 
-    sha_pw = hashlib.sha256(plain_pw.encode()).digest()  # 32바이트
+    sha_pw = hashlib.sha256(plain_pw.encode()).digest()
 
     if bcrypt.checkpw(sha_pw, stored_hash.encode()):
         log_login_attempt(username, True, "LOGIN_SUCCESS")
+        log_event(f"LOGIN SUCCESS: username={username}")
         return jsonify({'message': '로그인 성공!'}), 200
     else:
         log_login_attempt(username, False, "WRONG_PASSWORD")
+        log_event(f"LOGIN FAIL: username={username}, reason=wrong_password")
         return jsonify({'message': '아이디 또는 비밀번호가 틀렸습니다'}), 400
 
 # ============================
