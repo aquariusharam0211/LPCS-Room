@@ -116,3 +116,48 @@ def log_login_attempt(username: str, success: bool, reason: str) -> None:
     status = "SUCCESS" if success else "FAIL"
     user_str = username if username is not None else "(none)"
     print(f"[LOGIN] {timestamp} user={user_str!r} status={status} reason={reason}")
+
+
+
+    # security.py 맨 아래쪽 근처에 추가
+
+def rotate_keys(bit_length: int = 2048) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+    """
+    기존 RSA 키 파일을 백업하고, 새 키를 생성해서 파일에 저장한 뒤
+    (public_key, private_key)를 반환한다.
+
+    - bit_length: 새로 만들 RSA n의 대략적인 비트 길이
+    """
+    # 키 폴더 없으면 생성
+    if not os.path.exists(KEY_DIR):
+        os.makedirs(KEY_DIR, exist_ok=True)
+
+    # 백업 파일 이름에 timestamp 붙이기
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # 기존 키 파일이 있으면 .bak로 백업
+    if os.path.exists(PUBLIC_KEY_PATH):
+        backup_pub = os.path.join(KEY_DIR, f"rsa_public_{timestamp}.bak")
+        os.replace(PUBLIC_KEY_PATH, backup_pub)
+
+    if os.path.exists(PRIVATE_KEY_PATH):
+        backup_pri = os.path.join(KEY_DIR, f"rsa_private_{timestamp}.bak")
+        os.replace(PRIVATE_KEY_PATH, backup_pri)
+
+    # 새 키 생성
+    print(f"[RSA] 키 로테이션 실행 중... (새 {bit_length}비트 키 생성)")
+    public_key, private_key = generate_keypair(bit_length=bit_length)
+    n, e = public_key
+    _, d = private_key
+
+    # 새 키를 기존 경로에 저장
+    with open(PUBLIC_KEY_PATH, "w", encoding="utf-8") as f:
+        f.write(str(n) + "\n")
+        f.write(str(e) + "\n")
+
+    with open(PRIVATE_KEY_PATH, "w", encoding="utf-8") as f:
+        f.write(str(n) + "\n")
+        f.write(str(d) + "\n")
+
+    print("[RSA] 키 로테이션 완료. 새 키를 파일에 저장했습니다.")
+    return public_key, private_key

@@ -9,7 +9,12 @@ import hashlib
 import bcrypt
 import datetime
 
-from security import load_or_create_keys, decrypt_password_base64, log_login_attempt
+from security import (
+    load_or_create_keys,
+    decrypt_password_base64,
+    log_login_attempt,
+    rotate_keys,   # 🔹 새로 추가
+)
 
 app = Flask(__name__)
 CORS(app)
@@ -138,6 +143,41 @@ def login():
         log_login_attempt(username, False, "WRONG_PASSWORD")
         log_event(f"LOGIN FAIL: username={username}, reason=wrong_password")
         return jsonify({'message': '아이디 또는 비밀번호가 틀렸습니다'}), 400
+    
+
+# ============================
+#       RSA 키 로테이션 (임시 관리자용)
+# ============================
+@app.route('/admin/rotate-keys', methods=['POST'])
+def admin_rotate_keys():
+    """
+    RSA 키를 새로 생성해서 교체하는 임시 관리자용 API.
+
+    - 실제 서비스라면:
+        * 인증(토큰 / 세션) 필요
+        * 키 ID 관리, 구 키와의 호환 기간 등 복잡한 설계가 필요하지만
+      지금은 탐구/실습용이라 단순하게 구현함.
+    """
+    # 위에서 만든 전역 변수 public_key, private_key를 교체해야 하므로 global 선언
+    global public_key, private_key
+
+    # 새 RSA 키쌍 생성 + 파일에 저장 (security.rotate_keys 사용)
+    # 현재 서버 시작할 때도 1024비트로 키를 만들고 있으니 맞춰 줌
+    public_key, private_key = rotate_keys(bit_length=1024)
+
+    # 로그 파일에도 기록 남기기
+    log_event("KEY_ROTATION: new RSA keypair generated")
+
+    # 새 공개키 정보도 바로 응답으로 보내줌 (원하면 클라이언트가 즉시 갱신 가능)
+    n, e = public_key
+    return jsonify({
+        'message': 'RSA 키를 새로 생성했습니다.',
+        'n': str(n),
+        'e': str(e),
+    }), 200
+
+
+
 
 # ============================
 #     브라우저 자동 실행
