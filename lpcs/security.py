@@ -12,7 +12,7 @@ import base64
 import datetime
 from typing import Tuple
 
-from rsa_crypto import generate_keypair, decrypt
+from crypto.rsa_crypto import generate_keypair, decrypt
 
 
 # 키 파일 경로 설정 (프로젝트 루트 기준)
