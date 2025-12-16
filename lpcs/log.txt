@@ -74,3 +74,9 @@
 [2025-12-16 17:20:32] REGISTER SUCCESS: username=1111
 [2025-12-16 17:20:39] LOGIN SUCCESS: username=1111
 [2025-12-16 17:20:43] LOGIN FAIL: username=1111, reason=wrong_password
+[2025-12-16 17:30:49] LOGIN FAIL: username=3255, reason=user_not_found
+[2025-12-16 17:32:45] LOGIN SUCCESS: username=1111
+[2025-12-16 17:32:49] LOGIN FAIL: username=1111, reason=wrong_password
+[2025-12-16 17:37:51] LOGIN FAIL: username=3255, reason=user_not_found
+[2025-12-16 17:40:32] LOGIN SUCCESS: username=1111
+[2025-12-16 17:47:59] LOGIN FAIL: username=3255, reason=user_not_found

@@ -346,14 +346,15 @@
 
         // 버튼 활성화
         function updateButtonState() {
+            console.log('id value:', idInput.value, 'pw value:', pwInput.value);
             if (idInput.value && pwInput.value) {
                 loginBtn.disabled = false;
-                loginBtn.style.background = '#01a74c';
                 loginBtn.style.cursor = 'pointer';
+                console.log('Button set to green');
             } else {
                 loginBtn.disabled = true;
-                loginBtn.style.background = '#a5adb8';
                 loginBtn.style.cursor = 'default';
+                console.log('Button set to gray');
             }
         }
 
@@ -426,15 +427,6 @@
 </head>
 <body>
     <header style="width:100%;display:flex;position:relative;z-index:10;">
-        <div id="lang-select-box">
-            한국어
-            <div id="lang-dropdown" style="display:none;position:absolute;top:32px;right:10%;width:120px;background:white;border:1px solid #dadada;">
-                <div style="padding:8px 16px;cursor:pointer;">한국어</div>
-                <div style="padding:8px 16px;cursor:pointer;">English</div>
-                <div style="padding:8px 16px;cursor:pointer;">中文(简体)</div>
-                <div style="padding:8px 16px;cursor:pointer;">中文(繁體)</div>
-            </div>
-        </div>
     </header>
     <div class="never-logo">It is It</div>
     <div class="never-container">
@@ -449,22 +441,6 @@
                     <label class="floating-label" for="pw-input">비밀번호</label>
                 </div>
             </div>
-            <div class="login-options-row" style="display:flex;align-items:center;justify-content:space-between;margin:18px 0 0 0;max-width:400px;width:100%;">
-                <div class="keep-login-label" style="font-size:14px;color:#222;flex:0 0 auto;display:flex;align-items:center;">
-                    <input type="checkbox" id="keep-login-check" style="width:18px;height:18px;margin-right:8px;">
-                    <label for="keep-login-check" style="letter-spacing: -.10px;color: #888;transition: 0s;">로그인 상태 유지</label>
-                </div>
-                <div class="ip-security" style="display:flex;align-items:center;flex:0 0 auto;">
-                    <a class="ip-security-label" href="index1.html" target="_blank">IP보안</a>
-                    <label class="switch" style="margin-left:12px;position:relative;">
-                        <input type="checkbox" id="ip-switch" style="z-index:2;position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;">
-                        <span class="switch-slider">
-                            <span class="switch-text-on" style="position:absolute;left:5px;top:2px;font-size:11px;color:white;display:none;font-weight: 900;">ON</span>
-                            <span class="switch-text-off" style="position:absolute;right:5px;top:2px;font-size:11px;color:white;display:inline;font-weight: 900;">OFF</span>
-                        </span>
-                    </label>
-                </div>
-            </div>
             <div class="login-error"></div>
             <button class="login-btn" type="submit">로그인</button>
         </form>
@@ -475,11 +451,6 @@
         <a href="index3.html" class="login-link">아이디 찾기</a>
         <span class="divider">|</span>
         <a href="/signup" class="login-link">회원가입</a>
-    </div>
-    <div class="box">
-        <div class="box1">
-            <p style="text-align: center; color: #888;">광고</p>
-        </div>
     </div>
 </body>
 </html>
