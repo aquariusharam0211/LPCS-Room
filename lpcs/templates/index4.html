@@ -36,6 +36,61 @@
         const messageDiv = document.getElementById('message');
         const backBtn = document.getElementById('back-login-btn');
 
+        let publicKey = null;
+
+        // 공개키 로드
+        fetch('http://localhost:5000/public-key')
+            .then(res => res.json())
+            .then(data => {
+                publicKey = { n: BigInt(data.n), e: BigInt(data.e) };
+                console.log('Public key loaded');
+            })
+            .catch(err => {
+                console.error('Failed to load public key', err);
+            });
+
+        // RSA 암호화 함수들
+        function textToInt(text) {
+            const encoder = new TextEncoder();
+            const bytes = encoder.encode(text);
+            let hex = '';
+            for (let byte of bytes) {
+                hex += byte.toString(16).padStart(2, '0');
+            }
+            return BigInt('0x' + hex);
+        }
+
+        function modPow(base, exp, mod) {
+            let result = 1n;
+            base = base % mod;
+            while (exp > 0n) {
+                if (exp % 2n === 1n) result = (result * base) % mod;
+                base = (base * base) % mod;
+                exp /= 2n;
+            }
+            return result;
+        }
+
+        function encrypt(plaintext, n, e) {
+            const m = textToInt(plaintext);
+            if (m >= n) throw new Error('Message too long');
+            return modPow(m, e, n);
+        }
+
+        function bigintToBase64(bigint) {
+            let hex = bigint.toString(16);
+            if (hex.length % 2) hex = '0' + hex;
+            let bytes = new Uint8Array(hex.length / 2);
+            for (let i = 0; i < bytes.length; i++) {
+                bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+            }
+            let binary = '';
+            for (let byte of bytes) {
+                binary += String.fromCharCode(byte);
+            }
+            return btoa(binary);
+        }
+
         // 회원가입 처리
         form.addEventListener('submit', function(e) {
             e.preventDefault(); // 폼 제출 시 페이지 새로고침 방지
@@ -43,24 +98,38 @@
             const id = document.getElementById('id-input').value;
             const pw = document.getElementById('pw-input').value;
 
-            // 서버에 POST 요청
-            fetch('/register', {  // 상대 경로로 Flask 서버 호출
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, pw }) // 입력 데이터 전송
-            })
-            .then(res => res.json().then(data => ({status: res.status, body: data})))
-            .then(obj => {
-                // 결과 메시지 표시
-                messageDiv.textContent = obj.body.message;
-                messageDiv.style.color = obj.status === 200 ? 'green' : 'red';
-                if(obj.status === 200) form.reset(); // 성공 시 입력 초기화
-            })
-            .catch(err => {
-                // 서버 연결 실패 시
-                messageDiv.textContent = '서버 연결 오류';
+            if (!publicKey) {
+                messageDiv.textContent = '키 로드 중... 잠시 후 다시 시도하세요.';
                 messageDiv.style.color = 'red';
-            });
+                return;
+            }
+
+            try {
+                const cipherInt = encrypt(pw, publicKey.n, publicKey.e);
+                const cipherB64 = bigintToBase64(cipherInt);
+
+                // 서버에 POST 요청
+                fetch('/register', {  // 상대 경로로 Flask 서버 호출
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, pw: cipherB64 }) // 암호화된 비밀번호 전송
+                })
+                .then(res => res.json().then(data => ({status: res.status, body: data})))
+                .then(obj => {
+                    // 결과 메시지 표시
+                    messageDiv.textContent = obj.body.message;
+                    messageDiv.style.color = obj.status === 200 ? 'green' : 'red';
+                    if(obj.status === 200) form.reset(); // 성공 시 입력 초기화
+                })
+                .catch(err => {
+                    // 서버 연결 실패 시
+                    messageDiv.textContent = '서버 연결 오류';
+                    messageDiv.style.color = 'red';
+                });
+            } catch (err) {
+                messageDiv.textContent = '암호화 오류';
+                messageDiv.style.color = 'red';
+            }
         });
 
         // 로그인 페이지로 돌아가기

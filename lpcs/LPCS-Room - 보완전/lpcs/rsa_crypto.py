@@ -14,40 +14,7 @@
 
 import random
 from typing import Tuple
-import sys
 
-def decrypt_to_text_strict(cipher_int: int, private_key: Tuple[int, int]) -> str:
-    """
-    cipher_int를 복호화하여 문자열을 반환한다.
-    - UTF-8로 엄격하게 디코딩(errors='strict')하고,
-    - 디코딩한 문자열을 다시 UTF-8로 인코딩한 결과의 정수값이
-      원래 복호화된 정수와 일치하는지(무결성) 확인한다.
-    - 문제가 있으면 ValueError를 던진다.
-    """
-    n, d = private_key
-    # 1) 정수 복호화
-    m = pow(cipher_int, d, n)
-
-    # 2) 정수 -> 바이트
-    if m == 0:
-        data = b'\x00'
-    else:
-        length = (m.bit_length() + 7) // 8
-        data = m.to_bytes(length, byteorder='big')
-
-    # 3) 엄격한 UTF-8 디코딩 (문제가 있으면 예외)
-    try:
-        text = data.decode('utf-8', errors='strict')
-    except Exception as e:
-        raise ValueError("복호화된 바이트가 유효한 UTF-8 문자열이 아닙니다.") from e
-
-    # 4) 재인코딩 -> 정수로 바꿔 무결성 체크
-    re_m = int.from_bytes(text.encode('utf-8'), byteorder='big')
-    if re_m != m:
-        # 디코딩-인코딩 과정에서 바이트가 손실/변형된 경우
-        raise ValueError("복호화된 문자열의 재인코딩 결과가 일치하지 않습니다. 무결성 실패.")
-
-    return text
 
 # ================== 기본 수학 유틸 ==================
 
@@ -200,15 +167,25 @@ def encrypt(plaintext: str, public_key: Tuple[int, int]) -> int:
     c = pow(m, e, n)
     return c
 
-def decrypt(cipher_int: int, private_key: Tuple[int, int]) -> int:
+
+def decrypt(cipher_int: int, private_key: Tuple[int, int]) -> str:
+    """
+    정수 암호문을 RSA 개인키로 복호화해서 '문자열 평문'을 반환
+    M = C^d mod n
+    """
     n, d = private_key
-    return pow(cipher_int, d, n)
+    m = pow(cipher_int, d, n)
+    text = int_to_text(m)
+    return text
+
+
+# ================== 데모 실행 부분 ==================
 
 if __name__ == "__main__":
     print("=== RSA 데모 실행 ===")
     print("키를 생성하는 중입니다...")
 
-    # 데모용 키 생성
+    # 데모용이니까 64비트 정도로 (빠르게 생성됨)
     public_key, private_key = generate_keypair(bit_length=512)
 
     n, e = public_key
@@ -221,21 +198,15 @@ if __name__ == "__main__":
     print("\n암호화할 메시지를 입력하세요.")
     plaintext = input("평문 입력: ")
 
-    # 원본 정수값 보관
-    original_m = text_to_int(plaintext)
-
     # 암호화
     cipher_int = encrypt(plaintext, public_key)
     print(f"\n[암호문 (정수)] {cipher_int}")
 
-    decrypted_int = decrypt(cipher_int, private_key)
+    # 복호화
+    decrypted = decrypt(cipher_int, private_key)
+    print(f"\n[복호화 결과] {decrypted}")
 
-    # 참고용 텍스트 출력
-    decrypted_text = int_to_text(decrypted_int)
-    print(f"\n[복호화 결과] {decrypted_text}")
-
-
-    if decrypted_int == original_m:
-        print("\n✅ 복호화 결과가 원본과 정확히 일치합니다.")
+    if decrypted == plaintext:
+        print("\n✅ 복호화 결과가 원본과 일치합니다. (RSA 동작 확인)")
     else:
-        print("\n⚠ 복호화 결과가 원본과 다릅니다.")
+        print("\n⚠ 복호화 결과가 원본과 다릅니다. (구현/입력 확인 필요)")

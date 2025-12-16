@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>네버 로그인</title>
     <style>
-        /*내가 만든 맛있게 구운 CSS. 바삭함에 따라서 퀄리티가 변함*/
-        a {         
+        a {
             text-decoration: none;
         }
         body {
@@ -20,13 +19,13 @@
         .never-logo {
             font-size: 38px;
             font-weight: 900;
-            color: #1bd5ff;
+            color: #03c75a;
             transform: scaleX(1.1);
             margin-top: 45px;
             margin-bottom: 38px;
             letter-spacing: 3px;
             text-align: center;
-            -webkit-text-stroke: 3px #1bd5ff;
+            -webkit-text-stroke: 3px #03c75a;
         }
         .never-container {
             border: 1px solid rgb(223, 223, 223);
@@ -96,7 +95,7 @@
             min-height: 60px;
         }
         .login-input:focus {
-            border: 2px solid #aceeff;
+            border: 2px solid #00a44a;
             box-shadow: 0 0 0 1px #b2f2d6 inset;
             background: #f6fff9;
             z-index: 2;
@@ -248,7 +247,7 @@
             border-radius: 50%;
         }
         .switch input:checked + .switch-slider {
-            background-color: #cbf4ff;
+            background-color: #01a74c;
         }
         .switch input:checked + .switch-slider:before {
             transform: translateX(24px);
@@ -279,149 +278,81 @@
             display: inline-block;
             cursor: pointer;
         }
-        /*여기까지는 디자인이라 상관 X*/
     </style>
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const idInput = document.getElementById('id-input');
-        const pwInput = document.getElementById('pw-input');
-        const loginForm = document.querySelector('.login-form');
-        const loginError = document.querySelector('.login-error');
-        const loginBtn = document.querySelector('.login-btn');
+        document.addEventListener('DOMContentLoaded', function() {
+            const idInput = document.querySelector('.login-input[name="id"]');
+            const pwInput = document.querySelector('.login-input[name="pw"]');
+            const loginBtn = document.querySelector('.login-btn');
+            const loginForm = document.querySelector('.login-form');
+            const loginError = document.querySelector('.login-error');
 
-        let publicKey = null;
+            function updateButtonState() {
+                if (idInput.value && pwInput.value) {
+                    loginBtn.disabled = false;                                          
+                    loginBtn.style.background = '#01a74c';              
+                    loginBtn.style.cursor = 'pointer';
+                } 
+            }
 
-        // 공개키 로드
-        fetch('http://localhost:5000/public-key')
-            .then(res => res.json())
-            .then(data => {
-                publicKey = { n: BigInt(data.n), e: BigInt(data.e) };
-                console.log('Public key loaded');
-            })
-            .catch(err => {
-                console.error('Failed to load public key', err);
+            idInput.addEventListener('input', updateButtonState);
+            pwInput.addEventListener('input', updateButtonState);
+            updateButtonState();
+
+            loginForm.addEventListener('submit', function(e) {
+                if (!idInput.value) {
+                    e.preventDefault();
+                    loginError.textContent = '아이디 또는 전화번호를 입력해 주세요.';
+                    loginError.style.display = 'block';
+                    idInput.focus();
+                } else if (!pwInput.value) {
+                    e.preventDefault();
+                    loginError.textContent = '비밀번호를 입력해 주세요.';
+                    loginError.style.display = 'block';
+                    pwInput.focus();
+                } else {
+                    loginError.style.display = 'none';
+                }
             });
 
-        // RSA 암호화 함수들
-        function textToInt(text) {
-            const encoder = new TextEncoder();
-            const bytes = encoder.encode(text);
-            let hex = '';
-            for (let byte of bytes) {
-                hex += byte.toString(16).padStart(2, '0');
+            const langSelectBox = document.getElementById('lang-select-box');
+            const langDropdown = document.getElementById('lang-dropdown');
+            langSelectBox.addEventListener('click', function(e) {
+                e.stopPropagation();
+                langDropdown.style.display = langDropdown.style.display === 'block' ? 'none' : 'block';
+            });
+            document.addEventListener('click', function() {
+                langDropdown.style.display = 'none';
+            });
+
+            const ipSwitch = document.getElementById('ip-switch');
+            const switchSlider = document.querySelector('.switch-slider');
+            const switchTextOff = switchSlider.querySelector('.switch-text-off');
+            const switchTextOn = switchSlider.querySelector('.switch-text-on');
+            function updateSwitchText() {
+                if (ipSwitch.checked) {
+                    switchTextOff.style.display = 'none';
+                    switchTextOn.style.display = 'inline';
+                } else {
+                    switchTextOff.style.display = 'inline';
+                    switchTextOn.style.display = 'none';
+                }
             }
-            return BigInt('0x' + hex);
-        }
-
-        function modPow(base, exp, mod) {
-            let result = 1n;
-            base = base % mod;
-            while (exp > 0n) {
-                if (exp % 2n === 1n) result = (result * base) % mod;
-                base = (base * base) % mod;
-                exp /= 2n;
-            }
-            return result;
-        }
-
-        function encrypt(plaintext, n, e) {
-            const m = textToInt(plaintext);
-            if (m >= n) throw new Error('Message too long');
-            return modPow(m, e, n);
-        }
-
-        function bigintToBase64(bigint) {
-            let hex = bigint.toString(16);
-            if (hex.length % 2) hex = '0' + hex;
-            let bytes = new Uint8Array(hex.length / 2);
-            for (let i = 0; i < bytes.length; i++) {
-                bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
-            }
-            let binary = '';
-            for (let byte of bytes) {
-                binary += String.fromCharCode(byte);
-            }
-            return btoa(binary);
-        }
-
-        // 버튼 활성화
-        function updateButtonState() {
-            if (idInput.value && pwInput.value) {
-                loginBtn.disabled = false;
-                loginBtn.style.background = '#01a74c';
-                loginBtn.style.cursor = 'pointer';
-            } else {
-                loginBtn.disabled = true;
-                loginBtn.style.background = '#a5adb8';
-                loginBtn.style.cursor = 'default';
-            }
-        }
-
-        idInput.addEventListener('input', updateButtonState);
-        pwInput.addEventListener('input', updateButtonState);
-        updateButtonState();
-
-        // 로그인 폼 submit
-        loginForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const id = idInput.value.trim();
-            const pw = pwInput.value.trim();
-
-            if (!id) {
-                loginError.textContent = '아이디 또는 전화번호를 입력해 주세요.';
-                loginError.style.color = 'red';
-                loginError.style.display = 'block';
-                idInput.focus();
-                return;
-            }
-            if (!pw) {
-                loginError.textContent = '비밀번호를 입력해 주세요.';
-                loginError.style.color = 'red';
-                loginError.style.display = 'block';
-                pwInput.focus();
-                return;
-            }
-
-            if (!publicKey) {
-                loginError.textContent = '키 로드 중... 잠시 후 다시 시도하세요.';
-                loginError.style.color = 'red';
-                loginError.style.display = 'block';
-                return;
-            }
-
-            try {
-                const cipherInt = encrypt(pw, publicKey.n, publicKey.e);
-                const cipherB64 = bigintToBase64(cipherInt);
-
-                fetch('http://localhost:5000/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, pw: cipherB64 })
-                })
-                .then(res => res.json().then(data => ({status: res.status, body: data})))
-                .then(obj => {
-                    if (obj.status === 200) {
-                        loginError.textContent = '로그인 성공!';
-                        loginError.style.color = 'green';
-                    } else {
-                        loginError.textContent = obj.body.message || '아이디 또는 비밀번호가 틀렸습니다.';
-                        loginError.style.color = 'red';
-                    }
-                    loginError.style.display = 'block';
-                })
-                .catch(err => {
-                    loginError.textContent = '서버 연결 오류';
-                    loginError.style.color = 'red';
-                    loginError.style.display = 'block';
-                });
-            } catch (err) {
-                loginError.textContent = '암호화 오류';
-                loginError.style.color = 'red';
-                loginError.style.display = 'block';
-            }
+            ipSwitch.addEventListener('change', updateSwitchText);
+            updateSwitchText();
         });
-    });
+        document.querySelector('.login-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const id = document.getElementById('id-input').value;
+        const pw = document.getElementById('pw-input').value;
+        fetch('http://localhost:5000/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, pw })
+        })
+        .then(res => res.json())
+        .then(data => alert(data.message));
+        });
     </script>
 </head>
 <body>
@@ -436,7 +367,7 @@
             </div>
         </div>
     </header>
-    <div class="never-logo">It is It</div>
+    <div class="never-logo">NEVER</div>
     <div class="never-container">
         <form class="login-form" autocomplete="off">
             <div class="input-group">
@@ -451,7 +382,7 @@
             </div>
             <div class="login-options-row" style="display:flex;align-items:center;justify-content:space-between;margin:18px 0 0 0;max-width:400px;width:100%;">
                 <div class="keep-login-label" style="font-size:14px;color:#222;flex:0 0 auto;display:flex;align-items:center;">
-                    <input type="checkbox" id="keep-login-check" style="width:18px;height:18px;margin-right:8px;">
+                    <input type="checkbox" id="keep-login-check" style="width:18px;height:18px;margin-right:8px;accent-color:#01a74c;">
                     <label for="keep-login-check" style="letter-spacing: -.10px;color: #888;transition: 0s;">로그인 상태 유지</label>
                 </div>
                 <div class="ip-security" style="display:flex;align-items:center;flex:0 0 auto;">
@@ -470,11 +401,11 @@
         </form>
     </div>
     <div class="login-links">
-        <a href="index2.html" class="login-link">비밀번호 찾기</a>
+        <a href="index2.html" class="login-link" target="_blank">비밀번호 찾기</a>
         <span class="divider">|</span>
-        <a href="index3.html" class="login-link">아이디 찾기</a>
+        <a href="index3.html" class="login-link" target="_blank">아이디 찾기</a>
         <span class="divider">|</span>
-        <a href="/signup" class="login-link">회원가입</a>
+        <a href="index4.html" class="login-link" target="_blank">회원가입</a>
     </div>
     <div class="box">
         <div class="box1">

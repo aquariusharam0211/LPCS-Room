@@ -1,0 +1,8 @@
+CREATE DATABASE IF NOT EXISTS your_db;
+USE your_db;
+
+CREATE TABLE IF NOT EXISTS users (
+    id VARCHAR(40) NOT NULL,
+    pw VARCHAR(255) NOT NULL,
+    PRIMARY KEY (id)
+);

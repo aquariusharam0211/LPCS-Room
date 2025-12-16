@@ -7,27 +7,11 @@ import threading
 import os
 import hashlib
 import bcrypt
-import datetime
 
-from security import (
-    load_or_create_keys,
-    decrypt_password_base64,
-    log_login_attempt,
-    rotate_keys,   # 🔹 새로 추가
-)
+from security import load_or_create_keys, decrypt_password_base64, log_login_attempt
 
 app = Flask(__name__)
 CORS(app)
-
-# ============================
-#        로그 저장 함수
-# ============================
-def log_event(message):
-    """log.txt 파일에 로그 저장"""
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    line = f"[{timestamp}] {message}\n"
-    with open("log.txt", "a", encoding="utf-8") as f:
-        f.write(line)
 
 # ============================
 #       DB 연결
@@ -45,14 +29,6 @@ cursor = db.cursor()
 #       RSA 키 준비
 # ============================
 public_key, private_key = load_or_create_keys(bit_length=1024)
-
-@app.route('/public-key', methods=['GET'])
-def get_public_key():
-    n, e = public_key
-    return jsonify({
-        "n": str(n),  # modulus
-        "e": str(e)   # 공개 지수
-    })
 
 # ============================
 #       HTML 페이지
@@ -86,11 +62,10 @@ def register():
         plain_pw = decrypt_password_base64(cipher_b64, private_key)
     except ValueError as e:
         log_login_attempt(username, False, str(e))
-        log_event(f"REGISTER FAIL: username={username}, reason=decrypt_fail")
         return jsonify({'message': '비밀번호 복호화 실패', 'error': str(e)}), 400
 
-    # SHA256 → bcrypt
-    sha_pw = hashlib.sha256(plain_pw.encode()).digest()
+    # SHA256 → bcrypt 적용
+    sha_pw = hashlib.sha256(plain_pw.encode()).digest()  # 32바이트
     hashed_pw = bcrypt.hashpw(sha_pw, bcrypt.gensalt()).decode()
 
     cursor.execute(
@@ -100,8 +75,6 @@ def register():
     db.commit()
 
     log_login_attempt(username, True, "REGISTER_SUCCESS")
-    log_event(f"REGISTER SUCCESS: username={username}")
-
     return jsonify({'message': '회원가입 완료!'}), 200
 
 # ============================
@@ -120,61 +93,24 @@ def login():
     result = cursor.fetchone()
     if not result:
         log_login_attempt(username, False, "USER_NOT_FOUND")
-        log_event(f"LOGIN FAIL: username={username}, reason=user_not_found")
         return jsonify({'message': '아이디 또는 비밀번호가 틀렸습니다'}), 400
 
     stored_hash = result[0]
 
-    # RSA 복호화
     try:
         plain_pw = decrypt_password_base64(cipher_b64, private_key)
     except ValueError as e:
         log_login_attempt(username, False, str(e))
-        log_event(f"LOGIN FAIL: username={username}, reason=decrypt_fail")
         return jsonify({'message': '비밀번호 복호화 실패', 'error': str(e)}), 400
 
-    sha_pw = hashlib.sha256(plain_pw.encode()).digest()
+    sha_pw = hashlib.sha256(plain_pw.encode()).digest()  # 32바이트
 
     if bcrypt.checkpw(sha_pw, stored_hash.encode()):
         log_login_attempt(username, True, "LOGIN_SUCCESS")
-        log_event(f"LOGIN SUCCESS: username={username}")
         return jsonify({'message': '로그인 성공!'}), 200
     else:
         log_login_attempt(username, False, "WRONG_PASSWORD")
-        log_event(f"LOGIN FAIL: username={username}, reason=wrong_password")
         return jsonify({'message': '아이디 또는 비밀번호가 틀렸습니다'}), 400
-    
-
-# ============================
-#       RSA 키 로테이션 (임시 관리자용)
-# ============================
-@app.route('/admin/rotate-keys', methods=['POST'])
-def admin_rotate_keys():
-    """
-    RSA 키를 새로 생성해서 교체하는 임시 관리자용 API.
-
-    - 실제 서비스라면:
-        * 인증(토큰 / 세션) 필요
-        * 키 ID 관리, 구 키와의 호환 기간 등 복잡한 설계가 필요하지만
-      지금은 탐구/실습용이라 단순하게 구현함.
-    """
-    # 위에서 만든 전역 변수 public_key, private_key를 교체해야 하므로 global 선언
-    global public_key, private_key
-
-    # 새 RSA 키쌍 생성 + 파일에 저장 (security.rotate_keys 사용)
-    # 현재 서버 시작할 때도 1024비트로 키를 만들고 있으니 맞춰 줌
-    public_key, private_key = rotate_keys(bit_length=1024)
-
-    # 로그 파일에도 기록 남기기
-    log_event("KEY_ROTATION: new RSA keypair generated")
-
-    # 새 공개키 정보도 바로 응답으로 보내줌 (원하면 클라이언트가 즉시 갱신 가능)
-    n, e = public_key
-    return jsonify({
-        'message': 'RSA 키를 새로 생성했습니다.',
-        'n': str(n),
-        'e': str(e),
-    }), 200
 
 # ============================
 #     브라우저 자동 실행
